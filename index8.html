@@ -1,0 +1,57 @@
+export default async function handler(req, res) {
+  // Chỉ cho phép POST
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const { input, region, size } = req.body;
+  if (!input) return res.status(400).json({ error: 'Missing input' });
+
+  const rMap = {
+    'mien-nam': 'miền Nam Việt Nam (thích vị ngọt nhẹ, hay dùng nước cốt dừa, đường, ăn với cơm trắng)',
+    'mien-trung': 'miền Trung Việt Nam (vị đậm đà, cay mặn, nhiều mắm)',
+    'mien-bac': 'miền Bắc Việt Nam (thanh đạm, ít ngọt, nước trong, gia vị vừa phải)'
+  };
+  const regionDesc = rMap[region] || 'Việt Nam';
+  const sizeDesc = size || '2-3 người';
+
+  const systemPrompt = `Bạn là đầu bếp Việt Nam 20 năm kinh nghiệm nấu ăn gia đình ${regionDesc}.
+Nấu cho ${sizeDesc}. Luôn gợi ý món ăn với cơm trắng là ưu tiên số 1.
+
+QUY TẮC:
+- Chỉ gợi ý món Việt Nam hoặc món Á phổ biến ở Việt Nam
+- Ưu tiên món quen thuộc, dễ nấu, nguyên liệu đơn giản
+- KHÔNG gợi ý pasta, pizza, sandwich, salad kiểu Tây
+- Thời gian nấu phải thực tế (không phóng đại)
+- Nêm nếm theo khẩu vị vùng miền đã cho
+
+Trả về JSON thuần, KHÔNG markdown, KHÔNG text thừa:
+{"mon":[{"ten":"Tên món","emoji":"emoji","thoi_gian":"X phút","do_kho":"Dễ","mo_ta":"Mô tả ngắn hấp dẫn 1-2 câu","co":["nl có sẵn"],"them":["nl cần thêm nếu có"],"buoc":["Bước 1","Bước 2","Bước 3","Bước 4","Bước 5"]}]}`;
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1500,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: `Tôi có: ${input}\nGợi ý 3 món ngon nhất.` }]
+      })
+    });
+
+    const data = await response.json();
+    const text = data.content?.map(b => b.text || '').join('');
+    const clean = text.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+
+    res.setHeader('Cache-Control', 's-maxage=3600'); // Vercel edge cache 1 giờ
+    return res.status(200).json(parsed);
+  } catch (err) {
+    return res.status(500).json({ error: 'AI error', detail: err.message });
+  }
+}
