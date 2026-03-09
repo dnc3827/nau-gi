@@ -1,22 +1,664 @@
-export default async function handler(req, res) {
-  // Chỉ cho phép POST
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Nấu Gì – Hỏi AI, nấu ngay</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600;1,700&family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#faf6f1;
+  --surface:#fff;
+  --surface2:#f5efe6;
+  --border:#ede5d8;
+  --ink:#1c1612;
+  --ink2:#4a3f35;
+  --muted:#9e8e80;
+  --orange:#e8641a;
+  --orange-light:#fff1e9;
+  --orange-border:#fcd5b8;
+  --green:#2d7a4f;
+  --green-light:#eaf5ee;
+  --red:#c0392b;
+  --gold:#c8922a;
+  --gold-light:#fdf3e0;
+  --shadow:0 2px 20px rgba(28,22,18,.08);
+  --shadow-lg:0 8px 40px rgba(28,22,18,.12);
+  --radius:20px;
+}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:'Nunito',sans-serif;
+  min-height:100vh;
+  max-width:430px;
+  margin:0 auto;
+  position:relative;
+  overflow-x:hidden;
+}
+
+/* ── ONBOARDING ── */
+.ob-overlay{
+  position:fixed;inset:0;
+  background:rgba(28,22,18,.7);
+  z-index:200;
+  display:flex;align-items:flex-end;
+  backdrop-filter:blur(6px);
+  transition:opacity .35s;
+}
+.ob-overlay.hidden{opacity:0;pointer-events:none;}
+.ob-sheet{
+  background:var(--surface);
+  border-radius:28px 28px 0 0;
+  width:100%;
+  padding:28px 24px 40px;
+  animation:slideSheet .35s ease;
+}
+@keyframes slideSheet{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.ob-handle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 24px;}
+.ob-hero{text-align:center;margin-bottom:28px;}
+.ob-hero-emoji{font-size:56px;display:block;margin-bottom:12px;animation:float 3s ease-in-out infinite;}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.ob-hero-title{
+  font-family:'Cormorant Garamond',serif;
+  font-size:30px;font-weight:700;
+  color:var(--ink);line-height:1.1;
+  margin-bottom:6px;
+}
+.ob-hero-title em{font-style:italic;color:var(--orange);}
+.ob-hero-sub{font-size:14px;color:var(--muted);line-height:1.6;}
+.ob-section{margin-bottom:20px;}
+.ob-section-label{
+  font-size:11px;font-weight:700;
+  color:var(--muted);
+  text-transform:uppercase;letter-spacing:1px;
+  margin-bottom:10px;
+}
+.ob-chips{display:flex;gap:8px;flex-wrap:wrap;}
+.ob-chip{
+  padding:9px 18px;
+  border:1.5px solid var(--border);
+  border-radius:100px;
+  font-size:13px;font-weight:600;
+  color:var(--ink2);
+  background:var(--surface2);
+  cursor:pointer;
+  transition:all .2s;
+  font-family:'Nunito',sans-serif;
+}
+.ob-chip:hover{border-color:var(--orange);color:var(--orange);}
+.ob-chip.selected{
+  border-color:var(--orange);
+  color:var(--surface);
+  background:var(--orange);
+}
+.ob-cta{
+  width:100%;padding:16px;
+  background:var(--orange);
+  color:#fff;border:none;
+  border-radius:16px;
+  font-family:'Nunito',sans-serif;
+  font-size:16px;font-weight:700;
+  cursor:pointer;
+  transition:all .2s;
+  margin-top:8px;
+  box-shadow:0 4px 20px rgba(232,100,26,.35);
+}
+.ob-cta:hover{background:#d4571a;transform:translateY(-1px);}
+.ob-cta:disabled{background:var(--border);color:var(--muted);cursor:not-allowed;box-shadow:none;transform:none;}
+
+/* ── HEADER ── */
+.header{
+  padding:56px 20px 0;
+  display:flex;align-items:flex-start;justify-content:space-between;
+}
+.header-left{}
+.header-greeting{font-size:13px;color:var(--muted);font-weight:500;margin-bottom:4px;}
+.header-title{
+  font-family:'Cormorant Garamond',serif;
+  font-size:34px;font-weight:700;
+  line-height:1.05;color:var(--ink);
+}
+.header-title em{font-style:italic;color:var(--orange);}
+.header-avatar{
+  width:42px;height:42px;
+  background:var(--orange-light);
+  border:1.5px solid var(--orange-border);
+  border-radius:14px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;cursor:pointer;
+  transition:all .2s;flex-shrink:0;
+}
+.header-avatar:hover{background:var(--orange);border-color:var(--orange);}
+
+/* ── CONTEXT TAGS ── */
+.ctx-tags{
+  display:flex;gap:8px;
+  padding:14px 20px 0;
+  flex-wrap:wrap;
+}
+.ctx-tag{
+  display:flex;align-items:center;gap:5px;
+  padding:5px 12px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:100px;
+  font-size:11px;font-weight:600;color:var(--muted);
+  box-shadow:var(--shadow);
+}
+
+/* ── INPUT SECTION ── */
+.input-section{padding:20px 20px 0;}
+.input-card{
+  background:var(--surface);
+  border:1.5px solid var(--border);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+  overflow:hidden;
+  transition:border-color .25s,box-shadow .25s;
+}
+.input-card:focus-within{
+  border-color:var(--orange);
+  box-shadow:0 4px 28px rgba(232,100,26,.15);
+}
+.input-top{
+  display:flex;align-items:flex-start;gap:10px;
+  padding:16px 16px 12px;
+}
+.input-icon{
+  width:36px;height:36px;flex-shrink:0;
+  background:var(--orange-light);
+  border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;margin-top:2px;
+}
+.input-inner{flex:1;}
+.input-label-sm{
+  font-size:10px;font-weight:700;
+  color:var(--muted);
+  text-transform:uppercase;letter-spacing:.8px;
+  margin-bottom:4px;
+}
+textarea{
+  width:100%;background:transparent;
+  border:none;outline:none;
+  color:var(--ink);
+  font-family:'Nunito',sans-serif;
+  font-size:15px;line-height:1.6;font-weight:500;
+  resize:none;min-height:60px;max-height:120px;
+}
+textarea::placeholder{color:var(--muted);font-weight:400;}
+.input-bottom{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 14px 12px;
+  border-top:1px solid var(--border);
+  gap:8px;
+}
+.quick-row{display:flex;gap:6px;overflow-x:auto;flex:1;padding-bottom:2px;scrollbar-width:none;}
+.quick-row::-webkit-scrollbar{display:none;}
+.q-tag{
+  padding:5px 12px;
+  background:var(--surface2);
+  border:1px solid var(--border);
+  border-radius:100px;
+  font-size:11px;font-weight:600;color:var(--ink2);
+  cursor:pointer;white-space:nowrap;
+  font-family:'Nunito',sans-serif;
+  transition:all .18s;flex-shrink:0;
+}
+.q-tag:hover{background:var(--orange-light);border-color:var(--orange-border);color:var(--orange);}
+.find-btn{
+  width:40px;height:40px;flex-shrink:0;
+  background:var(--orange);
+  border:none;border-radius:12px;
+  color:#fff;font-size:17px;
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .2s;
+  box-shadow:0 3px 12px rgba(232,100,26,.4);
+}
+.find-btn:hover{background:#d4571a;transform:scale(1.05);}
+.find-btn:disabled{background:var(--border);color:var(--muted);cursor:not-allowed;box-shadow:none;transform:none;}
+.find-btn.spinning{animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── SECTION HEADER ── */
+.sec-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:24px 20px 14px;
+}
+.sec-title{
+  font-family:'Cormorant Garamond',serif;
+  font-size:22px;font-weight:700;color:var(--ink);
+}
+.sec-sub{font-size:12px;color:var(--muted);margin-top:1px;}
+.sec-clear{
+  background:none;border:none;
+  font-size:12px;color:var(--muted);
+  cursor:pointer;font-family:'Nunito',sans-serif;
+  transition:color .2s;
+}
+.sec-clear:hover{color:var(--red);}
+
+/* ── EMPTY STATE ── */
+.empty-state{
+  margin:24px 20px;
+  background:var(--surface);
+  border:1.5px dashed var(--border);
+  border-radius:var(--radius);
+  padding:40px 24px;
+  text-align:center;
+}
+.empty-emoji{font-size:52px;display:block;margin-bottom:16px;opacity:.5;}
+.empty-title{
+  font-family:'Cormorant Garamond',serif;
+  font-size:22px;font-weight:700;color:var(--ink2);
+  margin-bottom:8px;
+}
+.empty-desc{font-size:13px;color:var(--muted);line-height:1.7;}
+.empty-examples{
+  display:flex;flex-direction:column;gap:8px;
+  margin-top:20px;
+}
+.ex-pill{
+  background:var(--surface2);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:10px 14px;
+  font-size:13px;color:var(--ink2);
+  cursor:pointer;
+  transition:all .2s;text-align:left;
+  font-family:'Nunito',sans-serif;font-weight:500;
+}
+.ex-pill:hover{border-color:var(--orange);background:var(--orange-light);color:var(--orange);}
+.ex-pill span{font-size:11px;color:var(--muted);display:block;margin-top:2px;}
+
+/* ── LOADING ── */
+.loading-state{padding:24px 20px;}
+.skeleton-card{
+  background:var(--surface);
+  border-radius:var(--radius);
+  overflow:hidden;
+  margin-bottom:14px;
+  box-shadow:var(--shadow);
+}
+.skel-img{height:180px;background:linear-gradient(90deg,var(--surface2) 25%,var(--border) 50%,var(--surface2) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;}
+.skel-body{padding:16px;}
+.skel-line{height:14px;background:linear-gradient(90deg,var(--surface2) 25%,var(--border) 50%,var(--surface2) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:7px;margin-bottom:10px;}
+.skel-line.w80{width:80%}.skel-line.w60{width:60%}.skel-line.w40{width:40%}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.loading-label{
+  text-align:center;
+  font-size:13px;color:var(--muted);font-style:italic;
+  margin-bottom:16px;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.loading-dots span{display:inline-block;width:5px;height:5px;background:var(--orange);border-radius:50%;animation:dotbounce 1.2s ease-in-out infinite;}
+.loading-dots span:nth-child(2){animation-delay:.2s;}
+.loading-dots span:nth-child(3){animation-delay:.4s;}
+@keyframes dotbounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-6px)}}
+
+/* ── RECIPE CARDS ── */
+.cards-list{padding:0 20px;display:flex;flex-direction:column;gap:16px;}
+.recipe-card{
+  background:var(--surface);
+  border-radius:var(--radius);
+  overflow:hidden;
+  box-shadow:var(--shadow);
+  border:1px solid var(--border);
+  transition:transform .25s,box-shadow .25s;
+  animation:fadeUp .4s ease both;
+}
+.recipe-card:nth-child(2){animation-delay:.1s;}
+.recipe-card:nth-child(3){animation-delay:.2s;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.recipe-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg);}
+
+/* Card image area */
+.card-img-wrap{position:relative;height:190px;overflow:hidden;background:var(--surface2);}
+.card-img-placeholder{
+  width:100%;height:100%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:72px;
+  background:linear-gradient(135deg,var(--orange-light),var(--gold-light));
+}
+.card-fav{
+  position:absolute;top:12px;right:12px;
+  width:36px;height:36px;
+  background:rgba(255,255,255,.9);
+  border:none;border-radius:10px;
+  font-size:17px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .2s;
+  box-shadow:0 2px 8px rgba(0,0,0,.1);
+}
+.card-fav:hover{transform:scale(1.1);}
+.card-fav.active{background:rgba(231,76,60,.1);}
+.card-time-badge{
+  position:absolute;bottom:12px;left:12px;
+  background:rgba(255,255,255,.92);
+  border-radius:100px;
+  padding:4px 12px;
+  font-size:11px;font-weight:700;color:var(--ink);
+  display:flex;align-items:center;gap:4px;
+  box-shadow:0 2px 8px rgba(0,0,0,.1);
+}
+.card-diff-badge{
+  position:absolute;bottom:12px;right:12px;
+  border-radius:100px;
+  padding:4px 12px;
+  font-size:11px;font-weight:700;
+}
+.card-diff-badge.easy{background:var(--green-light);color:var(--green);}
+.card-diff-badge.medium{background:var(--gold-light);color:var(--gold);}
+.card-diff-badge.hard{background:#fdecea;color:var(--red);}
+
+/* Card body */
+.card-body{padding:16px;}
+.card-name{
+  font-family:'Cormorant Garamond',serif;
+  font-size:22px;font-weight:700;
+  color:var(--ink);line-height:1.2;
+  margin-bottom:6px;
+}
+.card-desc{
+  font-size:13px;color:var(--muted);
+  line-height:1.7;margin-bottom:12px;
+}
+.card-ingredients{
+  display:flex;flex-wrap:wrap;gap:6px;
+  margin-bottom:12px;
+}
+.ing-tag{
+  padding:4px 11px;
+  border-radius:100px;
+  font-size:11px;font-weight:600;
+}
+.ing-tag.have{background:var(--green-light);color:var(--green);}
+.ing-tag.need{background:#fdecea;color:var(--red);}
+
+.card-missing{
+  background:var(--orange-light);
+  border:1px solid var(--orange-border);
+  border-radius:12px;
+  padding:10px 13px;
+  font-size:12px;color:var(--orange);
+  margin-bottom:12px;
+  line-height:1.6;
+}
+.card-missing strong{display:block;font-weight:700;margin-bottom:2px;}
+
+.card-steps-toggle{
+  width:100%;
+  background:var(--surface2);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:11px 14px;
+  display:flex;align-items:center;justify-content:space-between;
+  cursor:pointer;
+  font-family:'Nunito',sans-serif;
+  font-size:13px;font-weight:700;color:var(--ink2);
+  transition:all .2s;
+}
+.card-steps-toggle:hover{background:var(--orange-light);border-color:var(--orange-border);color:var(--orange);}
+.toggle-icon{transition:transform .3s;font-size:12px;}
+.toggle-icon.open{transform:rotate(180deg);}
+
+.card-steps{max-height:0;overflow:hidden;transition:max-height .4s ease;}
+.card-steps.open{max-height:800px;}
+.steps-wrap{padding-top:14px;display:flex;flex-direction:column;gap:10px;}
+.step-item{display:flex;gap:12px;align-items:flex-start;}
+.step-dot{
+  width:26px;height:26px;flex-shrink:0;
+  background:var(--orange);
+  border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:800;color:#fff;
+  margin-top:1px;
+}
+.step-text{font-size:13px;color:var(--ink2);line-height:1.7;padding-top:4px;}
+
+/* ── FAVORITES ── */
+.fav-section{padding:0 20px 8px;}
+.fav-card{
+  display:flex;align-items:center;gap:12px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:12px 14px;
+  margin-bottom:8px;
+  cursor:pointer;
+  transition:all .2s;
+  box-shadow:var(--shadow);
+}
+.fav-card:hover{border-color:var(--orange-border);background:var(--orange-light);}
+.fav-emoji{
+  width:44px;height:44px;flex-shrink:0;
+  background:var(--surface2);
+  border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:24px;
+}
+.fav-info{flex:1;}
+.fav-name{font-size:14px;font-weight:700;color:var(--ink);margin-bottom:2px;}
+.fav-meta{font-size:11px;color:var(--muted);}
+.fav-del{
+  background:none;border:none;
+  font-size:16px;color:var(--muted);
+  cursor:pointer;padding:6px;
+  transition:color .2s;border-radius:8px;
+}
+.fav-del:hover{color:var(--red);background:#fdecea;}
+
+/* ── BOTTOM PADDING ── */
+.bottom-pad{height:40px;}
+
+/* ── TOAST ── */
+.toast{
+  position:fixed;bottom:28px;left:50%;
+  transform:translateX(-50%) translateY(16px);
+  background:var(--ink);color:#fff;
+  padding:10px 20px;border-radius:100px;
+  font-size:13px;font-weight:600;
+  opacity:0;transition:all .3s;
+  pointer-events:none;z-index:300;
+  white-space:nowrap;
+  box-shadow:0 8px 32px rgba(0,0,0,.25);
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* ── DISCLAIMER ── */
+.disclaimer{
+  text-align:center;padding:12px 20px 4px;
+  font-size:10px;color:var(--border);
+}
+</style>
+</head>
+<body>
+
+<!-- ONBOARDING BOTTOM SHEET -->
+<div class="ob-overlay" id="obOverlay">
+  <div class="ob-sheet">
+    <div class="ob-handle"></div>
+    <div class="ob-hero">
+      <span class="ob-hero-emoji">🍳</span>
+      <div class="ob-hero-title">Hôm nay <em>nấu gì</em>?</div>
+      <div class="ob-hero-sub">Nói tôi có gì trong bếp —<br>AI gợi ý món Việt phù hợp ngay</div>
+    </div>
+    <div class="ob-section">
+      <div class="ob-section-label">Bạn ở vùng nào?</div>
+      <div class="ob-chips">
+        <button class="ob-chip" data-val="mien-nam" onclick="pickChip(this,'region')">🌴 Miền Nam</button>
+        <button class="ob-chip" data-val="mien-trung" onclick="pickChip(this,'region')">🏔️ Miền Trung</button>
+        <button class="ob-chip" data-val="mien-bac" onclick="pickChip(this,'region')">🌾 Miền Bắc</button>
+      </div>
+    </div>
+    <div class="ob-section">
+      <div class="ob-section-label">Nấu cho mấy người?</div>
+      <div class="ob-chips">
+        <button class="ob-chip" data-val="1-2" onclick="pickChip(this,'size')">👤 1–2 người</button>
+        <button class="ob-chip" data-val="3-4" onclick="pickChip(this,'size')">👨‍👩‍👧 3–4 người</button>
+        <button class="ob-chip" data-val="5+" onclick="pickChip(this,'size')">👨‍👩‍👧‍👦 5+ người</button>
+      </div>
+    </div>
+    <button class="ob-cta" id="obCta" disabled onclick="doneOnboarding()">Bắt đầu nấu →</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="header">
+  <div class="header-left">
+    <div class="header-greeting" id="greeting">Chào buổi tối 👋</div>
+    <div class="header-title">Hôm nay <em>nấu gì</em>?</div>
+  </div>
+  <div class="header-avatar" onclick="showOb()" title="Cài đặt">⚙️</div>
+</div>
+
+<div class="ctx-tags" id="ctxTags"></div>
+
+<div class="input-section">
+  <div class="input-card">
+    <div class="input-top">
+      <div class="input-icon">🧺</div>
+      <div class="input-inner">
+        <div class="input-label-sm">Tôi đang có…</div>
+        <textarea id="txt" placeholder="VD: thịt heo, cà chua, trứng, hành lá..." onkeydown="onEnter(event)"></textarea>
+      </div>
+    </div>
+    <div class="input-bottom">
+      <div class="quick-row">
+        <button class="q-tag" onclick="tap('thịt heo')">🥩 thịt heo</button>
+        <button class="q-tag" onclick="tap('trứng')">🥚 trứng</button>
+        <button class="q-tag" onclick="tap('đậu hũ')">🟨 đậu hũ</button>
+        <button class="q-tag" onclick="tap('cá')">🐟 cá</button>
+        <button class="q-tag" onclick="tap('rau muống')">🥬 rau muống</button>
+        <button class="q-tag" onclick="tap('tôm')">🦐 tôm</button>
+        <button class="q-tag" onclick="tap('thịt gà')">🍗 thịt gà</button>
+      </div>
+      <button class="find-btn" id="findBtn" onclick="go()">→</button>
+    </div>
+  </div>
+</div>
+
+<div id="content">
+  <div class="empty-state">
+    <span class="empty-emoji">🥘</span>
+    <div class="empty-title">Tủ lạnh có gì, nấu nấy</div>
+    <div class="empty-desc">Nhập nguyên liệu bạn đang có — tươi, đông lạnh, hay khô đều được.</div>
+    <div class="empty-examples">
+      <div class="ex-pill" onclick="tryEx('thịt heo, cà chua, trứng, hành lá')">
+        🥩 thịt heo, cà chua, trứng, hành lá
+        <span>3 món gợi ý trong 5 giây</span>
+      </div>
+      <div class="ex-pill" onclick="tryEx('đậu hũ, nước mắm, tỏi, ớt')">
+        🟨 đậu hũ, nước mắm, tỏi, ớt
+        <span>Món chay nhanh</span>
+      </div>
+      <div class="ex-pill" onclick="tryEx('cá, gừng, hành, sả')">
+        🐟 cá, gừng, hành, sả
+        <span>Đặc sản miền Trung</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="favSec" style="display:none">
+  <div class="sec-head">
+    <div>
+      <div class="sec-title">❤️ Yêu thích</div>
+      <div class="sec-sub">Những món bạn hay nấu</div>
+    </div>
+  </div>
+  <div class="fav-section" id="favList"></div>
+</div>
+
+<div class="disclaimer">⚠️ Công thức do AI tạo — hãy điều chỉnh theo khẩu vị.</div>
+<div class="bottom-pad"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const SK = 'naugi_v2';
+let P = { region:'', size:'' };
+let favs = [];
+let recipes = [];
+
+// ── GREETING ──
+function setGreeting(){
+  const h = new Date().getHours();
+  const g = h<11 ? 'Chào buổi sáng ☀️' : h<14 ? 'Chào buổi trưa 🌤️' : h<18 ? 'Chào buổi chiều 🌥️' : 'Chào buổi tối 🌙';
+  document.getElementById('greeting').textContent = g;
+}
+
+// ── ONBOARDING ──
+function pickChip(el, group){
+  el.closest('.ob-chips').querySelectorAll('.ob-chip').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+  P[group] = el.dataset.val;
+  document.getElementById('obCta').disabled = !(P.region && P.size);
+}
+function doneOnboarding(){
+  save();
+  document.getElementById('obOverlay').classList.add('hidden');
+  renderCtx(); renderGreeting();
+}
+function showOb(){ document.getElementById('obOverlay').classList.remove('hidden'); }
+function renderCtx(){
+  const rMap = {'mien-nam':'🌴 Miền Nam','mien-trung':'🏔️ Miền Trung','mien-bac':'🌾 Miền Bắc'};
+  const sMap = {'1-2':'1–2 người','3-4':'3–4 người','5+':'5+ người'};
+  document.getElementById('ctxTags').innerHTML = P.region ? `
+    <div class="ctx-tag"><span>📍</span>${rMap[P.region]||''}</div>
+    <div class="ctx-tag"><span>👥</span>${sMap[P.size]||''}</div>
+    <div class="ctx-tag"><span>⚡</span>Ưu tiên món nhanh</div>` : '';
+}
+function renderGreeting(){ setGreeting(); }
+
+// ── INPUT ──
+function tap(ing){
+  const t = document.getElementById('txt');
+  t.value = t.value.trim() ? t.value.trim().replace(/,\s*$/,'') + ', ' + ing : ing;
+  t.focus();
+}
+function tryEx(txt){
+  document.getElementById('txt').value = txt;
+  go();
+}
+function onEnter(e){ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();go();} }
+
+// ── FETCH (cache-aware) ──
+async function go(){
+  const input = document.getElementById('txt').value.trim();
+  if(!input){ toast('Nhập nguyên liệu trước nhé! 🥕'); return; }
+
+  const btn = document.getElementById('findBtn');
+  btn.disabled = true; btn.classList.add('spinning'); btn.textContent = '↻';
+
+  // Bước 1: Chuẩn hóa nguyên liệu → tạo cache key
+  const ingKey = normalizeKey(input);
+
+  // Bước 2: Kiểm tra cache
+  const cached = cacheGet(ingKey, P.region);
+  if (cached) {
+    recipes = cached.recipes_json;
+    showRecipes(input, true); // true = từ cache
+    btn.disabled=false; btn.classList.remove('spinning'); btn.textContent='→';
+    return;
   }
 
-  const { input, region, size } = req.body;
-  if (!input) return res.status(400).json({ error: 'Missing input' });
+  // Bước 3: Không có cache → gọi AI
+  showLoading();
 
   const rMap = {
-    'mien-nam': 'miền Nam Việt Nam (thích vị ngọt nhẹ, hay dùng nước cốt dừa, đường, ăn với cơm trắng)',
-    'mien-trung': 'miền Trung Việt Nam (vị đậm đà, cay mặn, nhiều mắm)',
-    'mien-bac': 'miền Bắc Việt Nam (thanh đạm, ít ngọt, nước trong, gia vị vừa phải)'
+    'mien-nam':'miền Nam Việt Nam (thích vị ngọt nhẹ, hay dùng nước cốt dừa, đường, ăn với cơm trắng)',
+    'mien-trung':'miền Trung Việt Nam (vị đậm đà, cay mặn, nhiều mắm)',
+    'mien-bac':'miền Bắc Việt Nam (thanh đạm, ít ngọt, nước trong, gia vị vừa phải)'
   };
-  const regionDesc = rMap[region] || 'Việt Nam';
-  const sizeDesc = size || '2-3 người';
+  const region = rMap[P.region] || 'Việt Nam';
+  const size = {'1-2':'1-2 người','3-4':'3-4 người','5+':'5 người trở lên'}[P.size] || '2-3 người';
 
-  const systemPrompt = `Bạn là đầu bếp Việt Nam 20 năm kinh nghiệm nấu ăn gia đình ${regionDesc}.
-Nấu cho ${sizeDesc}. Luôn gợi ý món ăn với cơm trắng là ưu tiên số 1.
+  const sys = `Bạn là đầu bếp Việt Nam 20 năm kinh nghiệm nấu ăn gia đình ${region}.
+Nấu cho ${size}. Luôn gợi ý món ăn với cơm trắng là ưu tiên số 1.
 
 QUY TẮC:
 - Chỉ gợi ý món Việt Nam hoặc món Á phổ biến ở Việt Nam
@@ -29,29 +671,373 @@ Trả về JSON thuần, KHÔNG markdown, KHÔNG text thừa:
 {"mon":[{"ten":"Tên món","emoji":"emoji","thoi_gian":"X phút","do_kho":"Dễ","mo_ta":"Mô tả ngắn hấp dẫn 1-2 câu","co":["nl có sẵn"],"them":["nl cần thêm nếu có"],"buoc":["Bước 1","Bước 2","Bước 3","Bước 4","Bước 5"]}]}`;
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1500,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: `Tôi có: ${input}\nGợi ý 3 món ngon nhất.` }]
-      })
+    const r = await fetch('/api/recipe', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ input, region, size })
     });
+    const d = await r.json();
+    if (!d.mon) throw new Error('Invalid response');
+    recipes = d.mon;
 
-    const data = await response.json();
-    const text = data.content?.map(b => b.text || '').join('');
-    const clean = text.replace(/```json|```/g, '').trim();
-    const parsed = JSON.parse(clean);
+    // Bước 4: Lưu vào cache
+    cacheSet(ingKey, input, P.region, recipes);
 
-    res.setHeader('Cache-Control', 's-maxage=3600'); // Vercel edge cache 1 giờ
-    return res.status(200).json(parsed);
-  } catch (err) {
-    return res.status(500).json({ error: 'AI error', detail: err.message });
+    showRecipes(input, false); // false = từ AI
+  } catch(e) {
+    document.getElementById('content').innerHTML = `
+      <div class="empty-state">
+        <span class="empty-emoji">😕</span>
+        <div class="empty-title">Có lỗi xảy ra</div>
+        <div class="empty-desc">Không lấy được gợi ý. Vui lòng thử lại.</div>
+      </div>`;
   }
+  btn.disabled=false; btn.classList.remove('spinning'); btn.textContent='→';
 }
+
+function showLoading(){
+  document.getElementById('content').innerHTML = `
+    <div class="loading-state">
+      <div class="loading-label">
+        <div class="loading-dots"><span></span><span></span><span></span></div>
+        AI đang nghĩ món phù hợp...
+      </div>
+      ${[1,2,3].map(()=>`
+      <div class="skeleton-card">
+        <div class="skel-img"></div>
+        <div class="skel-body">
+          <div class="skel-line w80"></div>
+          <div class="skel-line w60"></div>
+          <div class="skel-line w40"></div>
+        </div>
+      </div>`).join('')}
+    </div>`;
+}
+
+function showRecipes(label, fromCache){
+  const isFav = n => favs.some(f=>f.name===n);
+  const diffClass = d => d==='Dễ'?'easy':d==='Khó'?'hard':'medium';
+  const stats = getCacheStats();
+  document.getElementById('content').innerHTML = `
+    <div class="sec-head">
+      <div>
+        <div class="sec-title">Gợi ý cho bạn</div>
+        <div class="sec-sub">${label.length>28?label.slice(0,28)+'…':label}</div>
+      </div>
+      <button class="sec-clear" onclick="clearAll()">Xóa ✕</button>
+    </div>
+    ${fromCache ? `
+    <div style="margin:0 20px 12px;padding:8px 14px;background:#eaf5ee;border:1px solid #b8e0c8;border-radius:10px;font-size:12px;color:#2d7a4f;display:flex;align-items:center;gap:6px">
+      ⚡ <strong>Lấy từ cache</strong> — không tốn tiền AI · Đã tiết kiệm ${stats.aiSaved} lần gọi
+    </div>` : `
+    <div style="margin:0 20px 12px;padding:8px 14px;background:#fff1e9;border:1px solid #fcd5b8;border-radius:10px;font-size:12px;color:#e8641a;display:flex;align-items:center;gap:6px">
+      🤖 <strong>Kết quả mới từ AI</strong> — đã lưu vào cache · ${stats.total} tổ hợp đã cache
+    </div>`}
+    <div class="cards-list">
+      ${recipes.map((r,i)=>`
+      <div class="recipe-card">
+        <div class="card-img-wrap">
+          <div id="cardImg${i}"><div class="card-img-placeholder">${r.emoji||'🍽️'}</div></div>
+          <button class="card-fav ${isFav(r.ten)?'active':''}" id="fb${i}" onclick="toggleFav(${i})">${isFav(r.ten)?'❤️':'🤍'}</button>
+          <div class="card-time-badge">⏱ ${r.thoi_gian}</div>
+          <div class="card-diff-badge ${diffClass(r.do_kho)}">${r.do_kho}</div>
+        </div>
+        <div class="card-body">
+          <div class="card-name">${r.ten}</div>
+          <div class="card-desc">${r.mo_ta}</div>
+          ${r.co?.length||r.them?.length?`
+          <div class="card-ingredients">
+            ${(r.co||[]).map(x=>`<span class="ing-tag have">✓ ${x}</span>`).join('')}
+            ${(r.them||[]).map(x=>`<span class="ing-tag need">+ ${x}</span>`).join('')}
+          </div>`:''}
+          ${r.them?.length?`<div class="card-missing"><strong>🛒 Cần mua thêm:</strong>${r.them.join(', ')}</div>`:''}
+          <button class="card-steps-toggle" onclick="toggle(${i})" id="tog${i}">
+            <span>📋 Xem công thức</span>
+            <span class="toggle-icon" id="arr${i}">▼</span>
+          </button>
+          <div class="card-steps" id="st${i}">
+            <div class="steps-wrap">
+              ${(r.buoc||[]).map((s,si)=>`
+              <div class="step-item">
+                <div class="step-dot">${si+1}</div>
+                <div class="step-text">${s}</div>
+              </div>`).join('')}
+            </div>
+          </div>
+        </div>
+      </div>`).join('')}
+    </div>`;
+  // Load ảnh thật sau khi render xong
+  setTimeout(() => loadCardImages(recipes), 100);
+}
+
+function toggle(i){
+  const st=document.getElementById('st'+i);
+  const arr=document.getElementById('arr'+i);
+  const tog=document.getElementById('tog'+i);
+  const open=st.classList.toggle('open');
+  arr.classList.toggle('open',open);
+  tog.querySelector('span').textContent = open?'📋 Ẩn công thức':'📋 Xem công thức';
+}
+
+function clearAll(){
+  document.getElementById('txt').value='';
+  recipes=[];
+  document.getElementById('content').innerHTML=`
+    <div class="empty-state">
+      <span class="empty-emoji">🥘</span>
+      <div class="empty-title">Tủ lạnh có gì, nấu nấy</div>
+      <div class="empty-desc">Nhập nguyên liệu bạn đang có — tươi, đông lạnh, hay khô đều được.</div>
+      <div class="empty-examples">
+        <div class="ex-pill" onclick="tryEx('thịt heo, cà chua, trứng, hành lá')">
+          🥩 thịt heo, cà chua, trứng, hành lá<span>3 món gợi ý trong 5 giây</span>
+        </div>
+        <div class="ex-pill" onclick="tryEx('đậu hũ, nước mắm, tỏi, ớt')">
+          🟨 đậu hũ, nước mắm, tỏi, ớt<span>Món chay nhanh</span>
+        </div>
+        <div class="ex-pill" onclick="tryEx('cá, gừng, hành, sả')">
+          🐟 cá, gừng, hành, sả<span>Đặc sản miền Trung</span>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── FAVORITES ──
+function toggleFav(i){
+  const r=recipes[i]; if(!r)return;
+  const idx=favs.findIndex(f=>f.name===r.ten);
+  if(idx>=0){
+    favs.splice(idx,1);
+    toast('Đã bỏ khỏi yêu thích');
+    document.getElementById('fb'+i).innerHTML='🤍';
+    document.getElementById('fb'+i).classList.remove('active');
+  } else {
+    favs.push({name:r.ten,emoji:r.emoji,time:r.thoi_gian,recipe:r});
+    toast('❤️ Đã lưu!');
+    document.getElementById('fb'+i).innerHTML='❤️';
+    document.getElementById('fb'+i).classList.add('active');
+  }
+  save(); renderFavs();
+}
+function renderFavs(){
+  const sec=document.getElementById('favSec');
+  if(!favs.length){sec.style.display='none';return;}
+  sec.style.display='block';
+  document.getElementById('favList').innerHTML=favs.map((f,i)=>`
+    <div class="fav-card" onclick="loadFav(${i})">
+      <div class="fav-emoji">${f.emoji||'🍽️'}</div>
+      <div class="fav-info">
+        <div class="fav-name">${f.name}</div>
+        <div class="fav-meta">⏱ ${f.time}</div>
+      </div>
+      <button class="fav-del" onclick="delFav(event,${i})">✕</button>
+    </div>`).join('');
+}
+function loadFav(i){
+  recipes=[favs[i].recipe];
+  showRecipes(favs[i].name);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function delFav(e,i){
+  e.stopPropagation();
+  favs.splice(i,1);
+  save();renderFavs();
+  toast('Đã xóa');
+}
+
+// ── UNSPLASH IMAGE ──
+// Thay YOUR_UNSPLASH_KEY bằng Access Key của bạn
+const UNSPLASH_KEY = '_0AOCiSr9Trpa_f8AzWzSDPGkA12cld9IiqW-7Lcews';
+
+// Map tên món Việt → keyword tiếng Anh để tìm ảnh
+const DISH_MAP = {
+  // Thịt heo
+  'kho tàu':'braised pork eggs vietnamese',
+  'kho tiêu':'black pepper pork vietnamese',
+  'rang mặn':'caramelized pork rice',
+  'xào':'stir fry pork vegetables',
+  'luộc':'boiled pork vietnamese',
+  'hầm':'pork stew vietnamese',
+  // Gà
+  'gà kho':'braised chicken vietnamese',
+  'gà xào':'stir fry chicken vietnamese',
+  'gà luộc':'poached chicken vietnamese',
+  'gà hấp':'steamed chicken vietnamese',
+  // Cá
+  'cá kho':'braised fish vietnamese clay pot',
+  'cá chiên':'fried fish vietnamese',
+  'cá hấp':'steamed fish vietnamese ginger',
+  // Canh
+  'canh chua':'vietnamese sour soup tamarind',
+  'canh rau':'vietnamese vegetable soup',
+  'canh bí':'vietnamese squash soup',
+  'canh cải':'vietnamese cabbage soup',
+  // Rau
+  'rau muống xào':'water spinach stir fry garlic',
+  'rau xào':'stir fry vegetables asian',
+  // Trứng
+  'trứng chiên':'vietnamese fried egg',
+  'trứng kho':'braised egg vietnamese',
+  'trứng hấp':'steamed egg vietnamese',
+  // Đậu hũ
+  'đậu hũ chiên':'fried tofu vietnamese',
+  'đậu hũ kho':'braised tofu vietnamese',
+  'đậu hũ xào':'stir fry tofu vegetables',
+  // Món phổ biến
+  'phở':'vietnamese pho soup noodle',
+  'bún bò':'bun bo hue vietnamese spicy beef noodle',
+  'cơm tấm':'vietnamese broken rice pork',
+  'bánh mì':'vietnamese banh mi sandwich',
+  'bún riêu':'bun rieu vietnamese crab noodle soup',
+};
+
+// Tìm keyword từ tên món
+function dishToKeyword(tenMon) {
+  const lower = tenMon.toLowerCase();
+  for (const [vi, en] of Object.entries(DISH_MAP)) {
+    if (lower.includes(vi)) return en;
+  }
+  // Fallback: dịch tên món sang English keyword chung
+  if (lower.includes('canh')) return 'vietnamese soup bowl';
+  if (lower.includes('xào')) return 'asian stir fry dish';
+  if (lower.includes('kho')) return 'vietnamese braised dish clay pot';
+  if (lower.includes('chiên') || lower.includes('rán')) return 'vietnamese fried dish';
+  if (lower.includes('hấp')) return 'vietnamese steamed dish';
+  if (lower.includes('luộc')) return 'vietnamese boiled dish';
+  if (lower.includes('cháo')) return 'vietnamese rice porridge congee';
+  return 'vietnamese home cooking dish';
+}
+
+// Cache ảnh riêng để không gọi Unsplash lại
+const IMG_CACHE = {};
+
+async function fetchDishImage(tenMon) {
+  if (!UNSPLASH_KEY || UNSPLASH_KEY === 'YOUR_UNSPLASH_KEY') return null;
+  if (IMG_CACHE[tenMon]) return IMG_CACHE[tenMon];
+  try {
+    const keyword = dishToKeyword(tenMon);
+    const res = await fetch(
+      `https://api.unsplash.com/search/photos?query=${encodeURIComponent(keyword)}&per_page=1&orientation=landscape`,
+      { headers: { Authorization: `Client-ID ${UNSPLASH_KEY}` } }
+    );
+    const data = await res.json();
+    const url = data.results?.[0]?.urls?.regular || null;
+    if (url) IMG_CACHE[tenMon] = url;
+    return url;
+  } catch(e) { return null; }
+}
+
+// Load ảnh cho tất cả cards sau khi render
+async function loadCardImages(recipeList) {
+  if (!UNSPLASH_KEY || UNSPLASH_KEY === 'YOUR_UNSPLASH_KEY') return;
+  recipeList.forEach(async (r, i) => {
+    const imgEl = document.getElementById(`cardImg${i}`);
+    if (!imgEl) return;
+    const url = await fetchDishImage(r.ten);
+    if (url && imgEl) {
+      // Fade in ảnh thật, ẩn emoji placeholder
+      imgEl.innerHTML = `<img src="${url}" alt="${r.ten}"
+        style="width:100%;height:190px;object-fit:cover;display:block;animation:fadeIn .4s ease"
+        onerror="this.parentElement.innerHTML='<div class=card-img-placeholder>${r.emoji||'🍽️'}</div>'">`;
+    }
+  });
+}
+// Schema giống Supabase để sau nâng cấp không cần đổi structure:
+// ingredients_key : cache key đã chuẩn hóa + sort
+// ingredients_raw : input gốc user nhập
+// region          : mien-nam / mien-trung / mien-bac
+// recipes_json    : kết quả AI trả về
+// used_count      : số lần được tìm (1 = lần đầu gọi AI, 2+ = cache hit)
+// created_at      : ISO timestamp
+
+const CACHE_KEY = 'naugi_cache_v1';
+let cache = {};
+
+// Chuẩn hóa nguyên liệu → cache key nhất quán
+// "Thịt Heo, CÀ CHUA , trứng" → "ca-chua_thit-heo_trung"
+function normalizeKey(raw) {
+  return raw
+    .toLowerCase()
+    .split(/[,\n]+/)
+    .map(s => s.trim())
+    .filter(s => s.length > 0)
+    .map(s => s
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .replace(/[^a-z0-9\s]/g, '')
+      .trim()
+      .replace(/\s+/g, '-')
+    )
+    .filter(s => s.length > 0)
+    .sort()
+    .join('_');
+}
+
+function cacheGet(ingKey, region) {
+  const key = `${ingKey}__${region||'vn'}`;
+  const entry = cache[key];
+  if (!entry) return null;
+  entry.used_count = (entry.used_count || 1) + 1;
+  saveCache();
+  return entry;
+}
+
+function cacheSet(ingKey, ingRaw, region, recipesJson) {
+  const key = `${ingKey}__${region||'vn'}`;
+  cache[key] = {
+    ingredients_key: ingKey,
+    ingredients_raw: ingRaw,
+    region: region || 'vn',
+    recipes_json: recipesJson,
+    used_count: 1,
+    created_at: new Date().toISOString()
+  };
+  saveCache();
+}
+
+function getCacheStats() {
+  const entries = Object.values(cache);
+  const aiSaved = entries.reduce((s,e) => s + Math.max(0,(e.used_count||1)-1), 0);
+  return { total: entries.length, aiSaved };
+}
+
+function saveCache() {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify(cache)); } catch(e) {}
+}
+function loadCache() {
+  try { const r = localStorage.getItem(CACHE_KEY); if(r) cache = JSON.parse(r); }
+  catch(e) { cache = {}; }
+}
+
+// ── STORAGE ──
+function save(){ try{localStorage.setItem(SK,JSON.stringify({P,favs}));}catch(e){} }
+function load(){
+  try{
+    const d=JSON.parse(localStorage.getItem(SK)||'{}');
+    if(d.P)P=d.P;
+    if(d.favs)favs=d.favs;
+    return !!(P.region&&P.size);
+  }catch(e){return false;}
+}
+
+// ── TOAST ──
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+// ── INIT ──
+window.addEventListener('DOMContentLoaded',()=>{
+  setGreeting();
+  loadCache();
+  const ok=load();
+  if(ok){
+    document.getElementById('obOverlay').classList.add('hidden');
+    renderCtx();renderFavs();
+  }
+});
+</script>
+</body>
+</html>
