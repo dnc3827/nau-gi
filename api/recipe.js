@@ -48,7 +48,7 @@ Trả về JSON thuần, KHÔNG markdown, KHÔNG text thừa, KHÔNG giải thí
 
     const data = await response.json();
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) throw new Error('No response from Gemini');
+    if (!text) throw new Error(JSON.stringify(data)); // Log toàn bộ response để debug
 
     const clean = text.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(clean);
